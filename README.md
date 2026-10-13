@@ -152,10 +152,10 @@ Run these in the pack's repo. Each takes an optional path and defaults to the cu
 | `graph pack new <name>` | scaffold a pack from this template |
 | `graph pack check` | validate the manifest, load every file the way an install would, resolve `$pack` and `{{pack.name}}`, validate plans and agents against the pack plus graph's built-ins, check each migration loads and is named `migrate_v<N>`, and report requirements this machine doesn't meet |
 | `graph pack run <item> [input]` | run any of the pack's items, including excluded and migration ones, for debugging |
-| `graph pack test` | run `check`, then run every migration against its fixtures |
+| `graph pack test` | run `check`, then run every migration against its sample files |
 | `graph pack release <major\|minor\|patch>` | compare the public interface with the previous tag and create the next tag |
 
-`graph pack test` copies `tests/migrations/v<N>/before/` to a temporary directory, runs `migrate_v<N>` over it with `apply: true`, and compares the result with `tests/migrations/v<N>/after/`.
+`tests/migrations/v<N>/` holds sample user files, the plans, agents and tools someone would have written against the previous major. `graph pack test` copies them to a temporary directory, runs `migrate_v<N>` over them with `apply: true`, and validates the result against the new version: every name it calls must exist in the pack's public interface, and every step input must match the input schema of the tool it calls. A migration that leaves an old name or an old input key behind fails.
 
 `graph pack release` refuses a minor or patch that removes or renames an item, adds a required input, or changes an output schema, and refuses a major that has neither a `migrate_v<N>` plan nor a `MIGRATING.md` section. It creates the tag and leaves pushing it to you.
 
