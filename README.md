@@ -11,6 +11,8 @@ pack.toml            manifest: name, description, requirements
 tools/*.yaml         tool files (graph's tool format)
 plans/*.yaml         plan files (graph's plan format)
 agents/*.yaml        agent files (graph's agent format)
+plans/migrations/    one migration plan per major release
+tools/migrations/    tools only the migration plans use
 CHANGELOG.md         one entry per release tag
 MIGRATING.md         what changed in each major and how to move to it
 README.md            what the pack does and how to set it up
@@ -51,7 +53,7 @@ version = ">=1.0"
 url = "https://mcp.linear.app/mcp"
 
 [catalog]
-hidden = ["tool__migrate_*", "plan__migrate_*"]
+hidden = ["tool__internal_*"]
 ```
 
 | Key | Checked | When it isn't met |
@@ -81,7 +83,7 @@ A release is a semver git tag: `v1.0.0`, `v1.1.0`, `v2.0.0`. The tag is the pack
 
 ## Major versions and migrations
 
-Every major release ships a migration plan, `plans/migrate_v<N>.yaml`, and a `MIGRATING.md` section saying what changed. Keep the old migration plans when you add new ones: a user going from v1 to v3 runs `migrate_v2`, then `migrate_v3`, from the v3 files.
+Every major release ships a migration plan, `plans/migrations/migrate_v<N>.yaml`, and a `MIGRATING.md` section saying what changed. Keep the old migration plans when you add new ones: a user going from v1 to v3 runs `migrate_v2`, then `migrate_v3`, from the v3 files.
 
 `graph pack update <pack> --major` runs each migration with this input, first with `apply: false`, shows the diffs, asks, then runs again with `apply: true`:
 
@@ -93,7 +95,9 @@ Every major release ships a migration plan, `plans/migrate_v<N>.yaml`, and a `MI
 
 The plan's output is `{applied, files}`, each file `{path, changed, applied, diff}`. A pack that ships no migration plan for a major gets its `MIGRATING.md` printed instead.
 
-This pack's `plans/migrate_v2.yaml` is the pattern: a scan tool finds files that mention the old names, a `map` asks `builtin__infer` to rewrite each one under exact rules, and a write tool returns the diff and writes only when `apply` is true. Running it twice changes nothing the second time. Its tools are listed in `catalog.hidden` so they never show up in tool search.
+This pack's `plans/migrations/migrate_v2.yaml` is the pattern: a scan tool finds files that mention the old names, a `map` asks `builtin__infer` to rewrite each one under exact rules, and a write tool returns the diff and writes only when `apply` is true. Running it twice changes nothing the second time.
+
+Everything under `plans/migrations/` and `tools/migrations/` is hidden from the catalog, tool search and the planner without a `catalog.hidden` entry, and stays callable by full name. Names are still `<pack>__<kind>__<name>`; the directory doesn't change them, so `plans/migrations/migrate_v2.yaml` is `example__plan__migrate_v2`. `graph pack update --major` finds migrations by that directory and the `migrate_v<N>` identifier.
 
 ## Installing a pack
 
