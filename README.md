@@ -100,7 +100,7 @@ The plan's output is `{applied, files}`, each file `{path, changed, applied, dif
 
 The user's files call the pack by its installed name, which the migration reads as `{{pack.name}}`. This pack's `plans/migrations/migrate_v2.yaml` is the pattern: a scan tool finds files that mention the old names, a `map` asks `builtin__infer` to rewrite each one under exact rules, and a write tool returns the diff and writes only when `apply` is true. Running it twice changes nothing the second time.
 
-Everything under `plans/migrations/` and `tools/migrations/` is hidden from the catalog, tool search and the planner, and stays callable by full name. Names are still `<pack>__<kind>__<name>`; the directory doesn't change them, so `plans/migrations/migrate_v2.yaml` is `example__plan__migrate_v2`. `graph pack update --major` finds migrations by that directory and the `migrate_v<N>` identifier.
+Files under `plans/migrations/` and `tools/migrations/` never join the catalog. Only `graph pack update --major` loads them: no plan, agent, planner, tool search or CLI command can call them. A migration plan calls its own tools and the pack's other items with `$pack`, like any pack file. The upgrade command finds a migration by its directory and its `migrate_v<N>` identifier.
 
 ## Installing a pack
 
@@ -120,7 +120,7 @@ ref = "v1"
 exclude = ["tool__file_info"]
 ```
 
-`include` and `exclude` take globs over `<kind>__<name>`, scoped to the pack the table names. They hide items from the catalog, tool search and the planner. Hidden items stay callable by their full name, so the pack's own plans keep working. This differs from an MCP server's `include_tools` and `exclude_tools`, which remove tools entirely.
+`include` and `exclude` take globs over `<kind>__<name>`, scoped to the pack the table names, and set the pack's public interface: what can be called from outside it. An excluded item is gone for your plans, agents, the planner, tool search and the CLI, the same as an MCP server's `exclude_tools`. The pack's own files still reach it through `$pack`, so its plans keep working. A plan of yours that calls an excluded item fails validation, naming the item.
 
 ```toml
 version = 1
