@@ -12,6 +12,7 @@ tools/*.yaml         tool files (graph's tool format)
 plans/*.yaml         plan files (graph's plan format)
 agents/*.yaml        agent files (graph's agent format)
 CHANGELOG.md         one entry per release tag
+MIGRATING.md         what changed in each major and how to move to it
 README.md            what the pack does and how to set it up
 ```
 
@@ -23,7 +24,7 @@ Everything in a pack is named `<pack>__<kind>__<name>`, where `<kind>` is `tool`
 
 | File | Catalog name |
 |---|---|
-| `tools/file_stats.yaml` (`name: file_stats`) | `example__tool__file_stats` |
+| `tools/file_info.yaml` (`name: file_info`) | `example__tool__file_info` |
 | `plans/describe_file.yaml` (`identifier: describe_file`) | `example__plan__describe_file` |
 | `agents/file_helper.yaml` (`name: file_helper`) | `example__agent__file_helper` |
 
@@ -48,6 +49,9 @@ env = ["EXAMPLE_TOKEN"]
 server = "linear-mcp-server"
 version = ">=1.0"
 url = "https://mcp.linear.app/mcp"
+
+[catalog]
+hidden = ["tool__migrate_*", "plan__migrate_*"]
 ```
 
 | Key | Checked | When it isn't met |
@@ -59,6 +63,7 @@ url = "https://mcp.linear.app/mcp"
 | `requires.binaries` | install, `graph config check`, before a plan's first step | reported by name; the pack still installs |
 | `requires.env` | install, `graph config check`, before a plan's first step | reported by name; the pack still installs |
 | `requires.mcp.<prefix>` | first connection to that server | fails naming the difference |
+| `catalog.hidden` | on load | globs over `<kind>__<name>` the pack keeps out of the catalog, tool search and the planner, the same way a user's `exclude` does; hidden items stay callable by full name |
 
 `requires.mcp.<prefix>` is keyed by the tool prefix the pack's plans call (`linear__save_issue` needs `linear`), so the user's server must be configured under that name. On first connection graph checks the server's reported `serverInfo` name and version against `server` and `version`, and checks that every `linear__*` tool the pack's plans call exists with a compatible input schema. graph derives that tool list from the plans, so it isn't written in the manifest. `url` is a setup hint: `graph pack add` prints a config snippet for it and never writes config itself.
 
@@ -73,6 +78,22 @@ A release is a semver git tag: `v1.0.0`, `v1.1.0`, `v2.0.0`. The tag is the pack
 - A **major** renames or removes anything, adds a required input, or changes an output shape.
 
 `graph pack update` moves installed packs to the newest tag within their current major. Crossing a major takes `graph pack update --major`, which runs the pack's migration for it.
+
+## Major versions and migrations
+
+Every major release ships a migration plan, `plans/migrate_v<N>.yaml`, and a `MIGRATING.md` section saying what changed. Keep the old migration plans when you add new ones: a user going from v1 to v3 runs `migrate_v2`, then `migrate_v3`, from the v3 files.
+
+`graph pack update <pack> --major` runs each migration with this input, first with `apply: false`, shows the diffs, asks, then runs again with `apply: true`:
+
+| Input | Type | Value |
+|---|---|---|
+| `pack` | string | the name the pack is installed under, which `--as` may have changed |
+| `root` | string | the directory holding the user's `plans`, `agents` and `tools`, such as `.graph` or `~/.config/graph` |
+| `apply` | boolean | `false` returns diffs only; `true` writes the files |
+
+The plan's output is `{applied, files}`, each file `{path, changed, applied, diff}`. A pack that ships no migration plan for a major gets its `MIGRATING.md` printed instead.
+
+This pack's `plans/migrate_v2.yaml` is the pattern: a scan tool finds files that mention the old names, a `map` asks `builtin__infer` to rewrite each one under exact rules, and a write tool returns the diff and writes only when `apply` is true. Running it twice changes nothing the second time. Its tools are listed in `catalog.hidden` so they never show up in tool search.
 
 ## Installing a pack
 
@@ -89,7 +110,7 @@ In a project, `add` copies the pack's files at the chosen tag into `.graph/packs
 [packs.example]
 git = "github.com/acme/graph-pack-example"
 ref = "v1"
-exclude = ["tool__file_stats"]
+exclude = ["tool__file_info"]
 ```
 
 `include` and `exclude` take globs over `<kind>__<name>`. They hide items from the catalog, tool search and the planner. Hidden items stay callable by their full name, so the pack's own plans keep working.

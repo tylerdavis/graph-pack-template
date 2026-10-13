@@ -4,9 +4,9 @@ name: Describe a file
 description: Reads a file's stats and opening excerpt and returns them with a one-paragraph summary of what the file is for.
 input_schema:
   type: object
-  required: [path]
+  required: [file]
   properties:
-    path:
+    file:
       type: string
       description: Path to the file, absolute or relative to the working directory
 output_schema:
@@ -18,9 +18,9 @@ output_schema:
     stats: { type: object }
 steps:
   - id: stats
-    tool_name: example__tool__file_stats
+    tool_name: example__tool__file_info
     input:
-      path: "{{input.path}}"
+      file: "{{input.file}}"
   - id: summary
     tool_name: builtin__infer
     input:

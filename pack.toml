@@ -8,3 +8,6 @@ homepage = "https://code.home.davis.cool/tmd/pack-template"
 graph = ">=0.17"
 os = ["macos", "linux"]
 binaries = ["bash", "jq", "wc", "file", "head"]
+
+[catalog]
+hidden = ["tool__migrate_*", "plan__migrate_*"]
