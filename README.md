@@ -51,9 +51,6 @@ env = ["EXAMPLE_TOKEN"]
 server = "linear-mcp-server"
 version = ">=1.0"
 url = "https://mcp.linear.app/mcp"
-
-[catalog]
-hidden = ["tool__internal_*"]
 ```
 
 | Key | Checked | When it isn't met |
@@ -65,7 +62,6 @@ hidden = ["tool__internal_*"]
 | `requires.binaries` | install, `graph config check`, before a plan's first step | reported by name; the pack still installs |
 | `requires.env` | install, `graph config check`, before a plan's first step | reported by name; the pack still installs |
 | `requires.mcp.<prefix>` | first connection to that server | fails naming the difference |
-| `catalog.hidden` | on load | globs over `<kind>__<name>` the pack keeps out of the catalog, tool search and the planner, the same way a user's `exclude` does; hidden items stay callable by full name |
 
 `requires.mcp.<prefix>` is keyed by the tool prefix the pack's plans call (`linear__save_issue` needs `linear`), so the user's server must be configured under that name. On first connection graph checks the server's reported `serverInfo` name and version against `server` and `version`, and checks that every `linear__*` tool the pack's plans call exists with a compatible input schema. graph derives that tool list from the plans, so it isn't written in the manifest. `url` is a setup hint: `graph pack add` prints a config snippet for it and never writes config itself.
 
@@ -97,7 +93,7 @@ The plan's output is `{applied, files}`, each file `{path, changed, applied, dif
 
 This pack's `plans/migrations/migrate_v2.yaml` is the pattern: a scan tool finds files that mention the old names, a `map` asks `builtin__infer` to rewrite each one under exact rules, and a write tool returns the diff and writes only when `apply` is true. Running it twice changes nothing the second time.
 
-Everything under `plans/migrations/` and `tools/migrations/` is hidden from the catalog, tool search and the planner without a `catalog.hidden` entry, and stays callable by full name. Names are still `<pack>__<kind>__<name>`; the directory doesn't change them, so `plans/migrations/migrate_v2.yaml` is `example__plan__migrate_v2`. `graph pack update --major` finds migrations by that directory and the `migrate_v<N>` identifier.
+Everything under `plans/migrations/` and `tools/migrations/` is hidden from the catalog, tool search and the planner, and stays callable by full name. Names are still `<pack>__<kind>__<name>`; the directory doesn't change them, so `plans/migrations/migrate_v2.yaml` is `example__plan__migrate_v2`. `graph pack update --major` finds migrations by that directory and the `migrate_v<N>` identifier.
 
 ## Installing a pack
 
