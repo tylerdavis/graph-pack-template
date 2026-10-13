@@ -120,7 +120,7 @@ ref = "v1"
 exclude = ["tool__file_info"]
 ```
 
-`include` and `exclude` take globs over `<kind>__<name>`. They hide items from the catalog, tool search and the planner. Hidden items stay callable by their full name, so the pack's own plans keep working.
+`include` and `exclude` take globs over `<kind>__<name>`, scoped to the pack the table names. They hide items from the catalog, tool search and the planner. Hidden items stay callable by their full name, so the pack's own plans keep working. This differs from an MCP server's `include_tools` and `exclude_tools`, which remove tools entirely.
 
 ```toml
 version = 1
