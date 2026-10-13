@@ -30,7 +30,15 @@ Everything in a pack is named `<pack>__<kind>__<name>`, where `<kind>` is `tool`
 | `plans/describe_file.yaml` (`identifier: describe_file`) | `example__plan__describe_file` |
 | `agents/file_helper.yaml` (`name: file_helper`) | `example__agent__file_helper` |
 
-Plans and agents in the pack refer to each other by those full names. Plans can also call anything else in the user's catalog: `builtin__infer`, MCP tools, other packs.
+Users can install a pack under another name (`graph pack add … --as files`), so a pack never writes its own name. Its files refer to their own items with `$pack` in place of the pack segment, and graph resolves it to the installed name:
+
+| Where | Write | Installed as `files`, graph sees |
+|---|---|---|
+| a plan step's `tool_name` | `$pack__tool__file_info` | `files__tool__file_info` |
+| an agent's `tools`, `subagents`, `handoffs` | `$pack__plan__describe_file` | `files__plan__describe_file` |
+| any template: prompts, instructions, step inputs | `{{pack.name}}__plan__describe_file` | `files__plan__describe_file` |
+
+`$pack` only resolves in those structural fields, so a `$pack` in an exec tool's shell script stays a shell variable. Everything graph shows (`show`, validation errors, step paths, the catalog) uses the resolved name. Plans can also call anything else in the user's catalog by its full name: `builtin__infer`, MCP tools, other packs.
 
 ## The manifest
 
@@ -85,13 +93,12 @@ Every major release ships a migration plan, `plans/migrations/migrate_v<N>.yaml`
 
 | Input | Type | Value |
 |---|---|---|
-| `pack` | string | the name the pack is installed under, which `--as` may have changed |
 | `root` | string | the directory holding the user's `plans`, `agents` and `tools`, such as `.graph` or `~/.config/graph` |
 | `apply` | boolean | `false` returns diffs only; `true` writes the files |
 
 The plan's output is `{applied, files}`, each file `{path, changed, applied, diff}`. A pack that ships no migration plan for a major gets its `MIGRATING.md` printed instead.
 
-This pack's `plans/migrations/migrate_v2.yaml` is the pattern: a scan tool finds files that mention the old names, a `map` asks `builtin__infer` to rewrite each one under exact rules, and a write tool returns the diff and writes only when `apply` is true. Running it twice changes nothing the second time.
+The user's files call the pack by its installed name, which the migration reads as `{{pack.name}}`. This pack's `plans/migrations/migrate_v2.yaml` is the pattern: a scan tool finds files that mention the old names, a `map` asks `builtin__infer` to rewrite each one under exact rules, and a write tool returns the diff and writes only when `apply` is true. Running it twice changes nothing the second time.
 
 Everything under `plans/migrations/` and `tools/migrations/` is hidden from the catalog, tool search and the planner, and stays callable by full name. Names are still `<pack>__<kind>__<name>`; the directory doesn't change them, so `plans/migrations/migrate_v2.yaml` is `example__plan__migrate_v2`. `graph pack update --major` finds migrations by that directory and the `migrate_v<N>` identifier.
 

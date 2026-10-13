@@ -18,7 +18,7 @@ output_schema:
     stats: { type: object }
 steps:
   - id: stats
-    tool_name: example__tool__file_info
+    tool_name: $pack__tool__file_info
     input:
       file: "{{input.file}}"
   - id: summary
