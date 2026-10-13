@@ -143,10 +143,20 @@ graph pack remove example
 
 Only `list` and `update` touch the network.
 
-## Checking a pack
+## Authoring commands
 
-```bash
-graph pack check .
-```
+Run these in the pack's repo. Each takes an optional path and defaults to the current directory.
 
-Loads the manifest and every file the way an install would, validates each plan and agent against the pack's own tools plus graph's built-ins, and reports requirements this machine doesn't meet. `.github/workflows/check.yaml` runs it on every push.
+| Command | What it does |
+|---|---|
+| `graph pack new <name>` | scaffold a pack from this template |
+| `graph pack check` | validate the manifest, load every file the way an install would, resolve `$pack` and `{{pack.name}}`, validate plans and agents against the pack plus graph's built-ins, check each migration loads and is named `migrate_v<N>`, and report requirements this machine doesn't meet |
+| `graph pack run <item> [input]` | run any of the pack's items, including excluded and migration ones, for debugging |
+| `graph pack test` | run `check`, then run every migration against its fixtures |
+| `graph pack release <major\|minor\|patch>` | compare the public interface with the previous tag and create the next tag |
+
+`graph pack test` copies `tests/migrations/v<N>/before/` to a temporary directory, runs `migrate_v<N>` over it with `apply: true`, and compares the result with `tests/migrations/v<N>/after/`.
+
+`graph pack release` refuses a minor or patch that removes or renames an item, adds a required input, or changes an output schema, and refuses a major that has neither a `migrate_v<N>` plan nor a `MIGRATING.md` section. It creates the tag and leaves pushing it to you.
+
+`.github/workflows/check.yaml` runs `graph pack test` on every push.

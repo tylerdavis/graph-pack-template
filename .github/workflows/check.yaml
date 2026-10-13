@@ -10,4 +10,4 @@ jobs:
     container: ghcr.io/tylerdavis/graph:v0.17.0
     steps:
       - uses: actions/checkout@v4
-      - run: graph pack check .
+      - run: graph pack test
