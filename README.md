@@ -1,21 +1,24 @@
 # graph pack template
 
-A starting point for a [graph](https://github.com/tylerdavis/graph) pack: a git repo of tools, plans and agents that people install with one command.
+A starting point for a repo of [graph](https://github.com/tylerdavis/graph) packs. A pack is a directory of tools, plans and agents that people install with one command, and one repo holds as many packs as you like.
 
-This template is a working pack named `example`. It describes files on disk: an exec tool reads a file's stats, a plan summarizes the file, and an agent answers questions using both. Copy the repo, rename the pack, and replace the contents with your own.
+This template has one working pack, `example/`. It describes files on disk: an exec tool reads a file's stats, a plan summarizes the file, and an agent answers questions using both. Create a repo from this template, then rename or replace `example/` and add more packs beside it with `graph pack new <name>`.
 
 ## Layout
 
 ```
-pack.toml            manifest: name, description, requirements
-tools/*.yaml         tool files (graph's tool format)
-plans/*.yaml         plan files (graph's plan format)
-agents/*.yaml        agent files (graph's agent format)
-plans/migrations/    one migration plan per major release
-tools/migrations/    tools only the migration plans use
-CHANGELOG.md         one entry per release tag
-MIGRATING.md         what changed in each major and how to move to it
-README.md            what the pack does and how to set it up
+.github/workflows/packs.yaml   runs graph pack test over every pack on each push
+example/                       one pack; add more directories beside it
+  pack.toml                    manifest: name, description, requirements
+  tools/*.yaml                 tool files (graph's tool format)
+  plans/*.yaml                 plan files (graph's plan format)
+  agents/*.yaml                agent files (graph's agent format)
+  plans/migrations/            one migration plan per major release
+  tools/migrations/            tools only the migration plans use
+  tests/migrations/v<N>/       sample user files for each migration
+  CHANGELOG.md                 one entry per release
+  MIGRATING.md                 what changed in each major and how to move to it
+  README.md                    what the pack does and how to set it up
 ```
 
 Every YAML file carries its own `version`, the graph file version it's written in, exactly as it would in a project's `.graph/` directory.
@@ -26,9 +29,9 @@ Everything in a pack is named `<pack>__<kind>__<name>`, where `<kind>` is `tool`
 
 | File | Catalog name |
 |---|---|
-| `tools/file_info.yaml` (`name: file_info`) | `example__tool__file_info` |
-| `plans/describe_file.yaml` (`identifier: describe_file`) | `example__plan__describe_file` |
-| `agents/file_helper.yaml` (`name: file_helper`) | `example__agent__file_helper` |
+| `example/tools/file_info.yaml` (`name: file_info`) | `example__tool__file_info` |
+| `example/plans/describe_file.yaml` (`identifier: describe_file`) | `example__plan__describe_file` |
+| `example/agents/file_helper.yaml` (`name: file_helper`) | `example__agent__file_helper` |
 
 Users can install a pack under another name (`graph pack add … --as files`), so a pack never writes its own name. Its files refer to their own items with `$pack` in place of the pack segment, and graph resolves it to the installed name:
 
@@ -47,7 +50,7 @@ version = 1
 name = "example"
 description = "Describe files on disk: stats, an excerpt, and a one-paragraph summary."
 license = "MIT"
-homepage = "https://github.com/tylerdavis/graph-pack-template"
+homepage = "https://github.com/acme/graph-packs/tree/main/example"
 
 [requires]
 graph = ">=0.17"
@@ -73,17 +76,17 @@ url = "https://mcp.linear.app/mcp"
 
 `requires.mcp.<prefix>` is keyed by the tool prefix the pack's plans call (`linear__save_issue` needs `linear`), so the user's server must be configured under that name. On first connection graph checks the server's reported `serverInfo` name and version against `server` and `version`, and checks that every `linear__*` tool the pack's plans call exists with a compatible input schema. graph derives that tool list from the plans, so it isn't written in the manifest. `url` is a setup hint: `graph pack add` prints a config snippet for it and never writes config itself.
 
-The example manifest above shows every key. This pack's real `pack.toml` uses only what it needs.
+The example manifest above shows every key. `example/pack.toml` uses only what it needs.
 
 ## Releases
 
-A release is a semver git tag: `v1.0.0`, `v1.1.0`, `v2.0.0`. The tag is the pack's version, and the manifest doesn't repeat it.
+A release is a git tag named after the pack's directory: `example/v1.0.0`, `example/v1.1.0`, `example/v2.0.0`. Each pack only reads tags under its own directory, so packs in one repo release independently. The tag is the pack's version, and the manifest doesn't repeat it.
 
 - A **patch** fixes behavior without changing any name, input or output.
 - A **minor** adds tools, plans, agents, optional inputs or output fields.
 - A **major** renames or removes anything, adds a required input, or changes an output shape.
 
-`graph pack update` moves installed packs to the newest tag within their current major. Crossing a major takes `graph pack update --major`, which runs the pack's migration for it.
+`graph pack update` moves installed packs to the newest release within their current major. Crossing a major takes `graph pack update --major`, which runs the pack's migration for it.
 
 ## Major versions and migrations
 
@@ -98,24 +101,25 @@ Every major release ships a migration plan, `plans/migrations/migrate_v<N>.yaml`
 
 The plan's output is `{applied, files}`, each file `{path, changed, applied, diff}`. A pack that ships no migration plan for a major gets its `MIGRATING.md` printed instead.
 
-The user's files call the pack by its installed name, which the migration reads as `{{pack.name}}`. This pack's `plans/migrations/migrate_v2.yaml` is the pattern: a scan tool finds files that mention the old names, a `map` asks `builtin__infer` to rewrite each one under exact rules, and a write tool returns the diff and writes only when `apply` is true. Running it twice changes nothing the second time.
+The user's files call the pack by its installed name, which the migration reads as `{{pack.name}}`. `example/plans/migrations/migrate_v2.yaml` is the pattern: a scan tool finds files that mention the old names, a `map` asks `builtin__infer` to rewrite each one under exact rules, and a write tool returns the diff and writes only when `apply` is true. Running it twice changes nothing the second time.
 
 Files under `plans/migrations/` and `tools/migrations/` never join the catalog. Only `graph pack update --major` loads them: no plan, agent, planner, tool search or CLI command can call them. A migration plan calls its own tools and the pack's other items with `$pack`, like any pack file. The upgrade command finds a migration by its directory and its `migrate_v<N>` identifier.
 
 ## Installing a pack
 
 ```bash
-graph pack add github                                  # official: github.com/tylerdavis/graph-pack-github
-graph pack add github.com/acme/graph-pack-example      # anyone else's, installed as "example"
-graph pack add github.com/acme/graph-pack-example --as files
-graph pack add example --global                        # into ~/.config/graph instead of the project
+graph pack add github                                          # official: the github/ pack in github.com/tylerdavis/graph-packs
+graph pack add github.com/acme/graph-packs --path example      # anyone else's, installed as "example"
+graph pack add github.com/acme/graph-packs --path example --as files
+graph pack add github --global                                 # into ~/.config/graph instead of the project
 ```
 
-In a project, `add` copies the pack's files at the chosen tag into `.graph/packs/<name>/` and records it in config and the lockfile. Commit all three: CI runs from the committed copy and never fetches.
+In a project, `add` copies the pack's directory at the chosen release into `.graph/packs/<name>/` and records it in config and the lockfile. Commit all three: CI runs from the committed copy and never fetches.
 
 ```toml
 [packs.example]
-git = "github.com/acme/graph-pack-example"
+git = "github.com/acme/graph-packs"
+path = "example"
 ref = "v1"
 exclude = ["tool__file_info"]
 ```
@@ -126,8 +130,9 @@ exclude = ["tool__file_info"]
 version = 1
 
 [packs.example]
-git = "github.com/acme/graph-pack-example"
-tag = "v1.0.0"
+git = "github.com/acme/graph-packs"
+path = "example"
+tag = "example/v1.0.0"
 sha = "4f1c2a9e0b7d3c5a8e6f1b2d4c7a9e0f3b5d8c1a"
 hash = "sha256:9a1b…"
 ```
@@ -135,7 +140,7 @@ hash = "sha256:9a1b…"
 That's `.graph/packs.lock`. `hash` covers the copied files, so `graph pack update` refuses to overwrite local edits without `--force`, and `graph config check` reports a copy that no longer matches its lock.
 
 ```bash
-graph pack list                  # installed tag, newest tag upstream, and what's behind
+graph pack list                  # installed release, newest release upstream, and what's behind
 graph pack update                # every pack, within its current major
 graph pack update example        # one pack
 graph pack remove example
@@ -145,18 +150,18 @@ Only `list` and `update` touch the network.
 
 ## Authoring commands
 
-Run these in the pack's repo. Each takes an optional path and defaults to the current directory.
+Run these at the repo root. Each takes an optional path to one pack's directory; `check` and `test` without one cover every pack in the repo.
 
 | Command | What it does |
 |---|---|
-| `graph pack new <name>` | scaffold a pack from this template |
-| `graph pack check` | validate the manifest, load every file the way an install would, resolve `$pack` and `{{pack.name}}`, validate plans and agents against the pack plus graph's built-ins, check each migration loads and is named `migrate_v<N>`, and report requirements this machine doesn't meet |
-| `graph pack run <item> [input]` | run any of the pack's items, including excluded and migration ones, for debugging |
-| `graph pack test` | run `check`, then run every migration against its sample files |
-| `graph pack release <major\|minor\|patch>` | compare the public interface with the previous tag and create the next tag |
+| `graph pack new <name>` | scaffold a new pack in `<name>/` |
+| `graph pack check [dir]` | validate the manifest, load every file the way an install would, resolve `$pack` and `{{pack.name}}`, validate plans and agents against the pack plus graph's built-ins, check each migration loads and is named `migrate_v<N>`, and report requirements this machine doesn't meet |
+| `graph pack run <item> [input] --path <dir>` | run any of the pack's items, including excluded and migration ones, for debugging |
+| `graph pack test [dir]` | run `check`, then run every migration against its sample files |
+| `graph pack release <major\|minor\|patch> <dir>` | compare the pack's public interface with its previous release and create the next `<dir>/vX.Y.Z` tag |
 
 `tests/migrations/v<N>/` holds sample user files, the plans, agents and tools someone would have written against the previous major. `graph pack test` copies them to a temporary directory, runs `migrate_v<N>` over them with `apply: true`, and validates the result against the new version: every name it calls must exist in the pack's public interface, and every step input must match the input schema of the tool it calls. A migration that leaves an old name or an old input key behind fails.
 
 `graph pack release` refuses a minor or patch that removes or renames an item, adds a required input, or changes an output schema, and refuses a major that has neither a `migrate_v<N>` plan nor a `MIGRATING.md` section. It creates the tag and leaves pushing it to you.
 
-`.github/workflows/check.yaml` runs `graph pack test` on every push.
+`.github/workflows/packs.yaml` runs `graph pack test` at the repo root on every push, which tests every pack.
