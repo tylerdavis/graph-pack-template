@@ -47,7 +47,7 @@ version = 1
 name = "example"
 description = "Describe files on disk: stats, an excerpt, and a one-paragraph summary."
 license = "MIT"
-homepage = "https://code.home.davis.cool/tmd/pack-template"
+homepage = "https://github.com/tylerdavis/graph-pack-template"
 
 [requires]
 graph = ">=0.17"
